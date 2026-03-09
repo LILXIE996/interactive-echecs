@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jeu d'échecs Michel</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #262421;
+      color: white;
+    }
+
+    .container {
+      display: flex;
+      min-height: 100vh;
+      flex-wrap: wrap;
+    }
+
+    .sidebar {
+      width: 290px;
+      background: #1b1a18;
+      padding: 20px;
+      border-right: 1px solid #333;
+    }
+
+    .sidebar h1 {
+      margin: 0 0 16px 0;
+      font-size: 28px;
+    }
+
+    .sidebar select,
+    .sidebar button {
+      width: 100%;
+      margin-bottom: 12px;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+    }
+
+    .sidebar select {
+      background: #312e2b;
+      color: white;
+    }
+
+    .sidebar button {
+      background: #81b64c;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .sidebar button:hover {
+      background: #6ea43f;
+    }
+
+    .info-box {
+      background: #312e2b;
+      padding: 14px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .small-label {
+      font-size: 13px;
+      color: #cfcfcf;
+      margin-bottom: 4px;
+    }
+
+    .big-value {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      padding: 30px;
+      flex-wrap: wrap;
+    }
+
+    .board-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    #board {
+      width: 640px;
+      height: 640px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      border: 8px solid #111;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    }
+
+    .square {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 46px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .light { background: #f0d9b5; }
+    .dark { background: #b58863; }
+
+    .selected {
+      outline: 4px solid #28c9ff inset;
+    }
+
+    .legal {
+      box-shadow: inset 0 0 0 5px rgba(51, 214, 102, 0.7);
+    }
+
+    .capture {
+      box-shadow: inset 0 0 0 5px rgba(255, 72, 72, 0.75);
+    }
+
+    .lastmove {
+      box-shadow: inset 0 0 0 5px rgba(255, 225, 92, 0.65);
+    }
+
+    .panel {
+      width: 320px;
+      background: #312e2b;
+      padding: 20px;
+      border-radius: 16px;
+    }
+
+    .panel h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+
+    .status-box,
+    .moves-box {
+      background: #1f1d1b;
+      padding: 14px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .status-box {
+      min-height: 90px;
+      line-height: 1.45;
+    }
+
+    .moves-box {
+      min-height: 220px;
+      max-height: 320px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    #victoryScreen {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 9999;
+      text-align: center;
+      padding: 20px;
+    }
+
+    #victoryText {
+      font-size: 42px;
+      margin-bottom: 24px;
+      font-weight: bold;
+    }
+
+    #victorySubtext {
+      font-size: 20px;
+      margin-bottom: 24px;
+      color: #dcdcdc;
+    }
+
+    #victoryScreen button {
+      padding: 18px 28px;
+      font-size: 22px;
+      border: none;
+      border-radius: 12px;
+      background: #81b64c;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    @media (max-width: 1100px) {
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #333;
+      }
+
+      #board {
+        width: 92vw;
+        height: 92vw;
+        max-width: 640px;
+        max-height: 640px;
+      }
+
+      .panel {
+        width: min(92vw, 640px);
+      }
+
+      .square {
+        font-size: clamp(26px, 6vw, 46px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+      <h1>Jeu d'échecs</h1>
+
+      <div class="info-box">
+        <div class="small-label">Room number</div>
+        <div class="big-value" id="roomNumber">----</div>
+      </div>
+
+      <div class="info-box">
+        <div class="small-label">Chrono Blanc</div>
+        <div class="big-value" id="whiteClock">10:00</div>
+      </div>
+
+      <div class="info-box">
+        <div class="small-label">Chrono Noir</div>
+        <div class="big-value" id="blackClock">10:00</div>
+      </div>
+
+      <select id="mode">
+        <option value="bot">Jouer contre un bot</option>
+        <option value="friend">Jouer contre un ami</option>
+      </select>
+
+      <button onclick="startGame()">Commencer la partie</button>
+      <button onclick="newGame()">Nouvelle partie</button>
+      <button onclick="stopGame()">Arrêter la partie</button>
+      <button onclick="abandonGame()">Abandonner la partie</button>
+      <button onclick="generateRoomNumber()">Nouvelle room number</button>
+      <button onclick="createRoom()">Créer room</button>
+      <button onclick="joinRoom()">Rejoindre room</button>
+    </aside>
+
+    <main class="main">
+      <div class="board-wrap">
+        <div id="board"></div>
+      </div>
+
+      <section class="panel">
+        <h2>Infos de partie</h2>
+        <div class="status-box" id="status">Clique sur « Commencer la partie ».</div>
+
+        <h2>Coups joués</h2>
+        <div class="moves-box" id="moves">Aucun coup pour le moment.</div>
+      </section>
+    </main>
+  </div>
+
+  <div id="victoryScreen">
+    <div id="victoryText"></div>
+    <div id="victorySubtext"></div>
+    <button onclick="newGame()">Rejouer</button>
+  </div>
+
+  <script>
+    const boardEl = document.getElementById("board");
+    const statusEl = document.getElementById("status");
+    const movesEl = document.getElementById("moves");
+    const whiteClockEl = document.getElementById("whiteClock");
+    const blackClockEl = document.getElementById("blackClock");
+    const roomNumberEl = document.getElementById("roomNumber");
+    const modeEl = document.getElementById("mode");
+
+    const FILES = ["a","b","c","d","e","f","g","h"];
+    const PIECES = {
+      wK: "♔", wQ: "♕", wR: "♖", wB: "♗", wN: "♘", wP: "♙",
+      bK: "♚", bQ: "♛", bR: "♜", bB: "♝", bN: "♞", bP: "♟"
+    };
+
+    let board = [];
+    let selected = null;
+    let legalMoves = [];
+    let currentTurn = "w";
+    let gameStarted = false;
+    let gameStopped = false;
+    let mode = "bot";
+    let moveHistory = [];
+    let lastMove = null;
+
+    let whiteTime = 600;
+    let blackTime = 600;
+    let clockInterval = null;
+
+    function createInitialBoard() {
+      return [
+        ["bR","bN","bB","bQ","bK","bB","bN","bR"],
+        ["bP","bP","bP","bP","bP","bP","bP","bP"],
+        [null,null,null,null,null,null,null,null],
+        [null,null,null,null,null,null,null,null],
+        [null,null,null,null,null,null,null,null],
+        [null,null,null,null,null,null,null,null],
+        ["wP","wP","wP","wP","wP","wP","wP","wP"],
+        ["wR","wN","wB","wQ","wK","wB","wN","wR"]
+      ];
+    }
+
+    function formatTime(seconds) {
+      const min = Math.floor(seconds / 60);
+      const sec = seconds % 60;
+      return String(min).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+    }
+
+    function updateClockDisplay() {
+      whiteClockEl.textContent = formatTime(whiteTime);
+      blackClockEl.textContent = formatTime(blackTime);
+    }
+
+    function stopClock() {
+      if (clockInterval) {
+        clearInterval(clockInterval);
+        clockInterval = null;
+      }
+    }
+
+    function startClock() {
+      stopClock();
+
+      if (!gameStarted || gameStopped) return;
+
+      clockInterval = setInterval(() => {
+        if (!gameStarted || gameStopped) return;
+
+        if (currentTurn === "w") {
+          whiteTime--;
+          if (whiteTime <= 0) {
+            whiteTime = 0;
+            updateClockDisplay();
+            showVictory("Les noirs gagnent", "Temps écoulé pour les Blancs.");
+            return;
+          }
+        } else {
+          blackTime--;
+          if (blackTime <= 0) {
+            blackTime = 0;
+            updateClockDisplay();
+            showVictory("Les blancs gagnent", "Temps écoulé pour les Noirs.");
+            return;
+          }
+        }
+
+        updateClockDisplay();
+      }, 1000);
+    }
+
+    function generateRoomNumber() {
+      const code = Math.floor(100000 + Math.random() * 900000);
+      roomNumberEl.textContent = code;
+    }
+
+    function createRoom() {
+      generateRoomNumber();
+      updateStatus("Room créée localement. Fonction en ligne non activée.");
+    }
+
+    function joinRoom() {
+      updateStatus("Fonction rejoindre room non activée pour le moment.");
+    }
+
+    function resetGame() {
+      board = createInitialBoard();
+      selected = null;
+      legalMoves = [];
+      currentTurn = "w";
+      moveHistory = [];
+      lastMove = null;
+      whiteTime = 600;
+      blackTime = 600;
+      updateClockDisplay();
+      renderBoard();
+      updateMoves();
+      updateStatus("Nouvelle partie prête.");
+    }
+
+    function updateStatus(extra = "") {
+      let text = "";
+
+      if (!gameStarted) {
+        text = 'Clique sur « Commencer la partie ».';
+      } else if (gameStopped) {
+        text = "Partie arrêtée.";
+      } else {
+        text = "Au tour des " + (currentTurn === "w" ? "Blancs" : "Noirs") + ".";
+      }
+
+      if (extra) text += " " + extra;
+      statusEl.textContent = text.trim();
+    }
+
+    function updateMoves() {
+      if (moveHistory.length === 0) {
+        movesEl.textContent = "Aucun coup pour le moment.";
+        return;
+      }
+
+      let text = "";
+      for (let i = 0; i < moveHistory.length; i += 2) {
+        const num = Math.floor(i / 2) + 1;
+        const white = moveHistory[i] || "";
+        const black = moveHistory[i + 1] || "";
+        text += num + ". " + white + (black ? "   " + black : "") + "\n";
+      }
+      movesEl.textContent = text;
+      movesEl.scrollTop = movesEl.scrollHeight;
+    }
+
+    function inBounds(r, c) {
+      return r >= 0 && r < 8 && c >= 0 && c < 8;
+    }
+
+    function getColor(piece) {
+      return piece ? piece[0] : null;
+    }
+
+    function toCoord(r, c) {
+      return FILES[c] + (8 - r);
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = "";
+
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const sq = document.createElement("div");
+          sq.className = "square " + (((r + c) % 2 === 0) ? "light" : "dark");
+          sq.dataset.row = r;
+          sq.dataset.col = c;
+
+          const piece = board[r][c];
+          sq.textContent = piece ? PIECES[piece] : "";
+
+          if (selected && selected.r === r && selected.c === c) {
+            sq.classList.add("selected");
+          }
+
+          const move = legalMoves.find(m => m.r === r && m.c === c);
+          if (move) {
+            sq.classList.add(move.capture ? "capture" : "legal");
+          }
+
+          if (lastMove &&
+              ((lastMove.from.r === r && lastMove.from.c === c) ||
+               (lastMove.to.r === r && lastMove.to.c === c))) {
+            sq.classList.add("lastmove");
+          }
+
+          sq.addEventListener("click", onSquareClick);
+          boardEl.appendChild(sq);
+        }
+      }
+    }
+
+    function slideMoves(r, c, directions, color) {
+      const moves = [];
+      for (const [dr, dc] of directions) {
+        let nr = r + dr;
+        let nc = c + dc;
+
+        while (inBounds(nr, nc)) {
+          const target = board[nr][nc];
+          if (!target) {
+            moves.push({ r: nr, c: nc, capture: false });
+          } else {
+            if (getColor(target) !== color) {
+              moves.push({ r: nr, c: nc, capture: true });
+            }
+            break;
+          }
+          nr += dr;
+          nc += dc;
+        }
+      }
+      return moves;
+    }
+
+    function getLegalMoves(r, c) {
+      const piece = board[r][c];
+      if (!piece) return [];
+
+      const color = piece[0];
+      const type = piece[1];
+      const moves = [];
+
+      if (type === "P") {
+        const dir = color === "w" ? -1 : 1;
+        const startRow = color === "w" ? 6 : 1;
+
+        if (inBounds(r + dir, c) && !board[r + dir][c]) {
+          moves.push({ r: r + dir, c, capture: false });
+
+          if (r === startRow && inBounds(r + 2 * dir, c) && !board[r + 2 * dir][c]) {
+            moves.push({ r: r + 2 * dir, c, capture: false });
+          }
+        }
+
+        for (const dc of [-1, 1]) {
+          const nr = r + dir;
+          const nc = c + dc;
+          if (inBounds(nr, nc) && board[nr][nc] && getColor(board[nr][nc]) !== color) {
+            moves.push({ r: nr, c: nc, capture: true });
+          }
+        }
+      }
+
+      if (type === "N") {
+        const jumps = [
+          [-2,-1],[-2,1],[-1,-2],[-1,2],
+          [1,-2],[1,2],[2,-1],[2,1]
+        ];
+        for (const [dr, dc] of jumps) {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (!inBounds(nr, nc)) continue;
+          const target = board[nr][nc];
+          if (!target) moves.push({ r: nr, c: nc, capture: false });
+          else if (getColor(target) !== color) moves.push({ r: nr, c: nc, capture: true });
+        }
+      }
+
+      if (type === "B") {
+        moves.push(...slideMoves(r, c, [[1,1],[1,-1],[-1,1],[-1,-1]], color));
+      }
+
+      if (type === "R") {
+        moves.push(...slideMoves(r, c, [[1,0],[-1,0],[0,1],[0,-1]], color));
+      }
+
+      if (type === "Q") {
+        moves.push(...slideMoves(r, c, [[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]], color));
+      }
+
+      if (type === "K") {
+        const dirs = [[1,1],[1,0],[1,-1],[0,1],[0,-1],[-1,1],[-1,0],[-1,-1]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (!inBounds(nr, nc)) continue;
+          const target = board[nr][nc];
+          if (!target) moves.push({ r: nr, c: nc, capture: false });
+          else if (getColor(target) !== color) moves.push({ r: nr, c: nc, capture: true });
+        }
+      }
+
+      return moves;
+    }
+
+    function pieceLetter(piece) {
+      return piece[1] === "P" ? "" : piece[1];
+    }
+
+    function makeMove(fromR, fromC, toR, toC) {
+      const piece = board[fromR][fromC];
+      const target = board[toR][toC];
+      const moveText = pieceLetter(piece) + toCoord(fromR, fromC) + "-" + toCoord(toR, toC) + (target ? "x" : "");
+
+      board[toR][toC] = piece;
+      board[fromR][fromC] = null;
+
+      if (piece[1] === "P" && (toR === 0 || toR === 7)) {
+        board[toR][toC] = piece[0] + "Q";
+      }
+
+      lastMove = {
+        from: { r: fromR, c: fromC },
+        to: { r: toR, c: toC }
+      };
+
+      moveHistory.push(moveText);
+      currentTurn = currentTurn === "w" ? "b" : "w";
+
+      selected = null;
+      legalMoves = [];
+      renderBoard();
+      updateMoves();
+      updateStatus();
+
+      startClock();
+    }
+
+    function hasAnyMove(color) {
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const p = board[r][c];
+          if (p && p[0] === color && getLegalMoves(r, c).length > 0) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function hasKing(color) {
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          if (board[r][c] === color + "K") return true;
+        }
+      }
+      return false;
+    }
+
+    function checkSimpleEnd() {
+      const whiteKing = hasKing("w");
+      const blackKing = hasKing("b");
+
+      if (!whiteKing) {
+        showVictory("Les noirs gagnent", "Le roi blanc a été capturé.");
+        return true;
+      }
+
+      if (!blackKing) {
+        showVictory("Les blancs gagnent", "Le roi noir a été capturé.");
+        return true;
+      }
+
+      if (!hasAnyMove(currentTurn)) {
+        showVictory("Partie terminée", "Plus aucun coup possible.");
+        return true;
+      }
+
+      return false;
+    }
+
+    function onSquareClick(e) {
+      const r = Number(e.currentTarget.dataset.row);
+      const c = Number(e.currentTarget.dataset.col);
+
+      if (!gameStarted || gameStopped) return;
+
+      const piece = board[r][c];
+
+      if (!selected) {
+        if (!piece) return;
+        if (piece[0] !== currentTurn) return;
+        if (mode === "bot" && currentTurn === "b") return;
+
+        selected = { r, c };
+        legalMoves = getLegalMoves(r, c);
+        renderBoard();
+        return;
+      }
+
+      if (selected.r === r && selected.c === c) {
+        selected = null;
+        legalMoves = [];
+        renderBoard();
+        return;
+      }
+
+      if (piece && piece[0] === currentTurn) {
+        if (mode === "bot" && currentTurn === "b") return;
+        selected = { r, c };
+        legalMoves = getLegalMoves(r, c);
+        renderBoard();
+        return;
+      }
+
+      const chosen = legalMoves.find(m => m.r === r && m.c === c);
+
+      if (!chosen) {
+        selected = null;
+        legalMoves = [];
+        renderBoard();
+        return;
+      }
+
+      makeMove(selected.r, selected.c, r, c);
+
+      if (checkSimpleEnd()) return;
+
+      if (mode === "bot" && currentTurn === "b" && gameStarted && !gameStopped) {
+        setTimeout(botMove, 450);
+      }
+    }
+
+    function botMove() {
+      if (!gameStarted || gameStopped || mode !== "bot" || currentTurn !== "b") return;
+
+      const allMoves = [];
+
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const piece = board[r][c];
+          if (piece && piece[0] === "b") {
+            const moves = getLegalMoves(r, c);
+            for (const m of moves) {
+              allMoves.push({
+                fromR: r,
+                fromC: c,
+                toR: m.r,
+                toC: m.c,
+                capture: m.capture
+              });
+            }
+          }
+        }
+      }
+
+      if (allMoves.length === 0) {
+        showVictory("Les blancs gagnent", "Le bot n'a plus de coups.");
+        return;
+      }
+
+      const captures = allMoves.filter(m => m.capture);
+      const pool = captures.length ? captures : allMoves;
+      const move = pool[Math.floor(Math.random() * pool.length)];
+
+      makeMove(move.fromR, move.fromC, move.toR, move.toC);
+      checkSimpleEnd();
+    }
+
+    function showVictory(title, subtitle) {
+      document.getElementById("victoryText").textContent = title;
+      document.getElementById("victorySubtext").textContent = subtitle || "";
+      document.getElementById("victoryScreen").style.display = "flex";
+      gameStarted = false;
+      gameStopped = true;
+      stopClock();
+      updateStatus(subtitle || "");
+    }
+
+    function hideVictory() {
+      document.getElementById("victoryScreen").style.display = "none";
+    }
+
+    function startGame() {
+      mode = modeEl.value;
+      gameStarted = true;
+      gameStopped = false;
+      updateStatus("Partie commencée.");
+      startClock();
+
+      if (mode === "bot" && currentTurn === "b") {
+        setTimeout(botMove, 450);
+      }
+    }
+
+    function stopGame() {
+      gameStopped = true;
+      stopClock();
+      updateStatus();
+    }
+
+    function abandonGame() {
+      if (!gameStarted || gameStopped) return;
+
+      if (currentTurn === "w") {
+        showVictory("Les noirs gagnent", "Abandon des Blancs.");
+      } else {
+        showVictory("Les blancs gagnent", "Abandon des Noirs.");
+      }
+    }
+
+    function newGame() {
+      hideVictory();
+      mode = modeEl.value;
+      gameStarted = true;
+      gameStopped = false;
+      generateRoomNumber();
+      resetGame();
+      updateStatus("Nouvelle partie commencée.");
+      startClock();
+
+      if (mode === "bot" && currentTurn === "b") {
+        setTimeout(botMove, 450);
+      }
+    }
+
+    generateRoomNumber();
+    resetGame();
+  </script>
+</body>
+</html>
